@@ -78,7 +78,7 @@
 `db.salles.find({$expr: {$gt: [{$multiply: ["$_id", 100]}, "$capacite"]}},{nom:true,capacite:true, _id: false})`
 
 ###### Exercice 12
-???
+`db.salles.aggregate([{$match:{smac:true}},{$project:{_id:false,nom:true,stylesCount:{$size:"$styles"}}},{$match:{stylesCount:{$gte:2}}}])`
 
 ###### Exercice 13
 `db.salles.find({}{"adresse.codePostal":true, _id: false})`
@@ -103,3 +103,19 @@
 
 ###### Exercice 20
 `db.salles.updateMany({nom:/^z/i},{$set: {nom: "Pub Z", capacite: 50, smac: false}}, {upsert: true})`
+
+###### Exercice 21
+`db.salles.countDocuments({_id: {$type: "objectId"}})`
+
+###### Exercice 22
+`db.salles.find({_id: {$not: {$type: "objectId"}}}, {nom: true, _id:false}).sort({capacite: -1}).limit(1)`
+
+###### Exercice 23
+`db.salles.replaceOne({"_id":ObjectId("65b7d0cd903afdd9af73f279")}, {nom: "Pub Z", capacite: 60})`
+`db.salles.replaceOne({"_id":ObjectId("65b7d0cd903afdd9af73f279")}, {nom: ObjectId("65b7d0cd903afdd9af73f279").nom, capacite: 60})`
+
+###### Exercice 24
+`db.salles.deleteOne({_id: {$type: "objectId"}, capacite: {$lte: 60}})`
+
+###### Exercice 25
+`db.salles.findOneAndUpdate({"adresse.ville": "Nîmes"}, {$inc: {capacite: -15}})`
