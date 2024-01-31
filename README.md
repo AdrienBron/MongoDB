@@ -183,13 +183,72 @@ Exo suite suite :
 Import :
 `mongoimport /data/restaurants.json -d test -c restaurants`
 
+Index :
+```js
+db.restaurants.createIndex({location:"2dsphere"})
+db.neighborhoods.createIndex({geometry:"2dsphere"})
+```
+
 Trouvez la commande qui va retourner le restaurant Riviera Caterer... De quel type d'ojet GeoJSON s'agit-il ?
+
 `db.restaurants.find({name:"Riviera Caterer"})`
+![Alt text](image.png)
 Il est de type Point
 
 Trouvez "Hell's kitchen" au sein de la collection "neighborhoods" et retournez le nom du quartier, sa superficie et sa population. Quelle est la superficie totale de ce quartier ?
 ```js
-db.neighborhoods.createIndex({"geometry":"2dsphere"})
 var Hell=db.restaurants.find({name:"Hell'S Kitchen"})
 db.neighborhoods.find({Hell: {$geoWithin: {$geometry: {type:"Polygon",coordinates: "geometry.coordinates"}}}})
+
+//Trouvez la requete type qui permet de recuperer le nom du quartier a partir d'un point donné.
+
+db.neighborhoods.find({
+  geometry:{
+    $geoIntersects:{
+      $geometry:{
+        type:"Point",
+        coordinates:[0,0]
+      }
+    }
+  }
+},{name:1,_id:0})
+
+//Trouver la requete qui trouve les restaurants dans un rayon donné (8km par exemple)
+
+db.restaurants.find(
+  {
+    location:{$geoWithin:
+    {$centerSphere}}
+
+})
 ```
+
+
+
+Text_Search:
+
+Exercice:
+importez le jeu d'essai, decrivez le:
+
+![Alt text](image-1.png)
+
+creer un index de text sur les champs summary, description et name:
+
+`db.Reviews.createIndex({ name: "text", description: "text", summary:"text" });`
+
+Lister tous les appartements contenant le terme duplex
+
+`db.stReviewsores.find({ $text: { $search: "duplex" } },{name:true})`
+
+Compter le nombre d'appartements qui possède un lit king size
+
+`db.Reviews.countDocuments({$text: { $search: '"king size"'}})` = 126
+
+Compter combien d'appartements ont pour description cozy, studio mais pas furnish (a partir de cette etape supprimez l'index et le placer uniquement sur la description)
+
+`db.Reviews.dropIndex("name_index");`
+
+`db.Reviews.createIndex({ description: "text"});`
+
+`db.Reviews.countDocuments({$text:{ $search:"cozy studio -furnish"}})` = 783
+
