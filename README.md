@@ -48,7 +48,7 @@
 `db.salles.find({smac:true}, {nom:true});`
 
 ###### Exercice 2
-`db.salles.find({capacite:{$gt:1000}}, {nom:true});`
+`db.salles.find({capacite:{$gt:1000}}, {nom:true,_id:false});`
 
 ###### Exercice 3
 `db.salles.find({"adresse.numero": {$exists: false}}, {_id: true})`
@@ -81,7 +81,7 @@
 `db.salles.aggregate([{$match:{smac:true}},{$project:{_id:false,nom:true,stylesCount:{$size:"$styles"}}},{$match:{stylesCount:{$gte:2}}}])`
 
 ###### Exercice 13
-`db.salles.find({}{"adresse.codePostal":true, _id: false})`
+`db.salles.distinct("adresse.codePostal")`
 
 ###### Exercice 14
 `db.salles.updateMany({},{$inc{capacite:100}})`
@@ -90,10 +90,10 @@
 `db.salles.updateMany({styles: {$ne: "jazz"}}, {$push: {styles: "jazz"}})`
 
 ###### Exercice 16
-`db.salles.updateMany({_id: {$nin: [2,3]}}, {$drop: {styles: "funk"}})`
+`db.salles.updateMany({_id: {$nin: [2,3]}}, {$pull: {styles: "funk"}})`
 
 ###### Exercice 17
-`db.salles.updateOne({_id: 3}, {$push: {styles: {$each: ["techno", "reggae"]}}})`
+`db.salles.updateOne({_id: 3}, {$addToSet: {styles: {$each: ["techno", "reggae"]}}})`
 
 ###### Exercice 18
 `db.salles.updateMany({nom: /^P/i}, {$inc: {capacite: 150}, $push: {contact: {telephone: "04 11 94 00 10"}}})`
@@ -119,3 +119,77 @@
 
 ###### Exercice 25
 `db.salles.findOneAndUpdate({"adresse.ville": "Nîmes"}, {$inc: {capacite: -15}})`
+
+
+#### Db Restaurants
+
+Récupérez la liste des restaurants ayant un grade inférieur à un score de 10 (Afficher cette liste sous forme de projection {name, grades.scores}) 
+`db.restaurantscollection.find({"grades.score":{$lt: 10}},{name:true,"grades.score":true})`
+
+#### Geo
+
+Exo 1:
+
+```js
+var KilometresEnRadians = function(kilometres){ var rayonTerrestreEnKm = 6371;
+return kilometres / rayonTerrestreEnKm;};
+var salle = db.salles.findOne({"adresse.ville": "Nîmes"});
+var requete = { "adresse.localisation": { $nearSphere: { $geometry: {type : "Point",
+coordinates : [salle.adresse.localisation.coordinates[0], salle.adresse.localisation.coordinates[1]]}, $maxDistance: KilometresEnRadians(60) } }, styles: { $all: ["blues", "soul"] } };
+db.salles.find(requete, {nom: true, _id: false});
+
+//correction :
+var KilometresEnRadians = function(kilometres){ var rayonTerrestreEnKm = 6371;
+return kilometres / rayonTerrestreEnKm;};
+var salle = db.salles.findOne({"adresse.ville": "Nîmes"});
+
+var requete = { "adresse.localisation":{
+  $geoWithin:{$centerSphere:[
+    salle.adresse.localisation.coordinates,
+    KilometresEnRadians(60)]
+    }
+    }, styles: { $in: ["blues", "soul"]}};
+db.salles.find(requete, {nom: true, _id: false});
+
+```
+
+Exo 2:
+```js
+var marseille = {"type": "Point", "coordinates": [43.300000, 5.400000]}
+db.salles.find({"adresse.localisation": {$nearSphere: {$geometry: marseille, $maxDistance: 100000}}}, {"adresse.ville": true, _id: false}).sort({"adresse.localisation": 1})
+```
+
+Exo 3:
+```js
+var polygone = {
+  type: "Polygon",
+  coordinates: [
+    [
+      [43.94899, 4.80908],
+      [43.95292, 4.80929],
+      [43.95174, 4.8056],
+      [43.94899, 4.80908],
+    ],
+  ],
+};
+ 
+db.salles.find({"adresse.localisation": {$geoWithin: {$geometry: polygone}}}, {nom: true, _id: false})
+//correction :
+db.salles.find({"adresse.localisation": {$geoIntersects: {$geometry: polygone}}}, {nom: true, _id: false})
+```
+
+Exo suite suite :
+
+Import :
+`mongoimport /data/restaurants.json -d test -c restaurants`
+
+Trouvez la commande qui va retourner le restaurant Riviera Caterer... De quel type d'ojet GeoJSON s'agit-il ?
+`db.restaurants.find({name:"Riviera Caterer"})`
+Il est de type Point
+
+Trouvez "Hell's kitchen" au sein de la collection "neighborhoods" et retournez le nom du quartier, sa superficie et sa population. Quelle est la superficie totale de ce quartier ?
+```js
+db.neighborhoods.createIndex({"geometry":"2dsphere"})
+var Hell=db.restaurants.find({name:"Hell'S Kitchen"})
+db.neighborhoods.find({Hell: {$geoWithin: {$geometry: {type:"Polygon",coordinates: "geometry.coordinates"}}}})
+```
